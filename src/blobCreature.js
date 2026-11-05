@@ -470,12 +470,150 @@ export function createBlobCreature() {
     }
   }
 
+  // 3D Floating Heart Particles & Celebration System
+  const heartShape = new THREE.Shape();
+  const heartPts = [];
+  const heartSegs = 32;
+  for (let i = 0; i <= heartSegs; i++) {
+    const t = (i / heartSegs) * Math.PI * 2;
+    const hx = 16 * Math.pow(Math.sin(t), 3);
+    const hy = 13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t);
+    heartPts.push(new THREE.Vector2(hx * 0.012, hy * 0.012));
+  }
+  heartShape.setFromPoints(heartPts);
+  const heartGeom = new THREE.ShapeGeometry(heartShape);
+  heartGeom.center();
+
+  const HEART_COLORS = [0xff3b77, 0xff6b9d, 0xffa3c4, 0xf43f5e, 0xfb7185, 0xf472b6, 0xff99c8];
+  const heartPool = [];
+  const heartsGroup = new THREE.Group();
+  heartsGroup.name = 'floating-hearts';
+
+  for (let i = 0; i < 36; i++) {
+    const mat = new THREE.MeshBasicMaterial({
+      color: HEART_COLORS[i % HEART_COLORS.length],
+      transparent: true,
+      opacity: 0.0,
+      depthWrite: false,
+      side: THREE.DoubleSide
+    });
+    const mesh = new THREE.Mesh(heartGeom, mat);
+    mesh.visible = false;
+    heartsGroup.add(mesh);
+    heartPool.push({
+      mesh,
+      mat,
+      active: false,
+      pos: new THREE.Vector3(),
+      vel: new THREE.Vector3(),
+      rot: 0,
+      rotVel: 0,
+      baseScale: 1.0,
+      life: 0,
+      maxLife: 1.4,
+      wobbleSpeed: 4.0,
+      wobblePhase: 0.0
+    });
+  }
+
+  function spawnHearts(count = 3, originWorldPos = null) {
+    let spawned = 0;
+    const s = animState.baseScale;
+    for (const h of heartPool) {
+      if (!h.active) {
+        h.active = true;
+        h.life = 0;
+        h.maxLife = 1.0 + Math.random() * 0.6;
+        h.rot = (Math.random() - 0.5) * 0.6;
+        h.rotVel = (Math.random() - 0.5) * 2.4;
+        h.baseScale = (0.55 + Math.random() * 0.5) * s;
+        h.wobbleSpeed = 3.0 + Math.random() * 3.5;
+        h.wobblePhase = Math.random() * Math.PI * 2.0;
+
+        if (originWorldPos) {
+          h.pos.copy(originWorldPos);
+          h.pos.x += (Math.random() - 0.5) * 0.35 * s;
+          h.pos.y += (Math.random() - 0.5) * 0.35 * s;
+          h.pos.z += (Math.random() - 0.5) * 0.35 * s;
+        } else {
+          h.pos.set(
+            root.position.x + (Math.random() - 0.5) * 0.85 * s,
+            root.position.y + (0.2 + Math.random() * 0.45) * s,
+            root.position.z + (Math.random() - 0.5) * 0.45 * s
+          );
+        }
+
+        h.vel.set(
+          (Math.random() - 0.5) * 0.7 * s,
+          (0.85 + Math.random() * 0.75) * s,
+          (Math.random() - 0.5) * 0.5 * s
+        );
+
+        h.mesh.visible = true;
+        h.mesh.scale.set(0.001, 0.001, 0.001);
+        h.mat.opacity = 0.0;
+        spawned++;
+        if (spawned >= count) break;
+      }
+    }
+  }
+
+  function updateHearts(dt, camera) {
+    for (const h of heartPool) {
+      if (h.active) {
+        h.life += dt;
+        if (h.life >= h.maxLife) {
+          h.active = false;
+          h.mesh.visible = false;
+          continue;
+        }
+
+        const p = h.life / h.maxLife;
+        const s = animState.baseScale;
+        h.pos.x += Math.sin(h.life * h.wobbleSpeed + h.wobblePhase) * 0.35 * s * dt;
+        h.pos.addScaledVector(h.vel, dt);
+        h.vel.y *= Math.exp(-dt * 0.45);
+
+        let alpha = 1.0;
+        if (p < 0.15) {
+          alpha = p / 0.15;
+        } else if (p > 0.6) {
+          alpha = (1.0 - p) / 0.4;
+        }
+        h.mat.opacity = Math.max(0, Math.min(1, alpha));
+
+        const scalePop = p < 0.2 ? Math.sin((p / 0.2) * (Math.PI * 0.5)) : 1.0;
+        const currentScale = h.baseScale * scalePop * (1.0 - p * 0.25);
+        h.mesh.scale.set(currentScale, currentScale, currentScale);
+
+        h.mesh.position.copy(h.pos);
+        if (camera) {
+          h.mesh.quaternion.copy(camera.quaternion);
+        }
+        h.rot += h.rotVel * dt;
+        h.mesh.rotateZ(h.rot);
+      }
+    }
+  }
+
+  // 360° Joyful Backflip Acrobatics
+  let isFlipping = false;
+  let flipProgress = 0.0;
+
+  function doJoyFlip() {
+    if (isFlipping) return false;
+    isFlipping = true;
+    flipProgress = 0.0;
+    return true;
+  }
+
   function triggerBoop() {
     animState.boopImpulse = 1.0;
     animState.boopPhase = 0.0;
+    spawnHearts(3);
   }
 
-  function update(dt, pointerNDC, cameraPos = null, isARMode = false) {
+  function update(dt, pointerNDC, cameraPos = null, isARMode = false, camera = null) {
     const safeDt = Math.min(Math.max(dt, 0.001), 0.05);
     animState.time += safeDt;
 
@@ -515,6 +653,33 @@ export function createBlobCreature() {
       }
     }
 
+    // Acrobatics 360° joyful backflip
+    let flipHop = 0.0;
+    let flipRotX = 0.0;
+    let flipSquash = 1.0;
+
+    if (isFlipping) {
+      flipProgress += safeDt * 1.6; // ~0.62s flip duration
+      if (flipProgress >= 1.0) {
+        flipProgress = 1.0;
+        isFlipping = false;
+        triggerBoop(); // Playful landing squash
+        spawnHearts(6);
+      } else {
+        const p = flipProgress;
+        flipHop = Math.sin(p * Math.PI) * 1.15 * animState.baseScale;
+        flipRotX = -p * Math.PI * 2.0;
+
+        if (p < 0.15) {
+          flipSquash = 1.0 - Math.sin((p / 0.15) * Math.PI) * 0.28;
+        } else if (p < 0.85) {
+          flipSquash = 1.0 + Math.sin(((p - 0.15) / 0.7) * Math.PI) * 0.24;
+        } else {
+          flipSquash = 1.0 - Math.sin(((p - 0.85) / 0.15) * Math.PI) * 0.22;
+        }
+      }
+    }
+
     // When placed in AR mode, keep Mochi's front face oriented directly towards the viewer (camera)
     if ((isPlaced || isARMode) && cameraPos) {
       const dx = cameraPos.x - anchorPos.x;
@@ -545,21 +710,23 @@ export function createBlobCreature() {
       1.0 +
       breath +
       Math.cos(animState.boopPhase * 2.0) * animState.boopImpulse * 0.14;
+    const combinedSquash = Math.max(0.4, squash * flipSquash);
 
     const prevX = root.position.x;
     const prevY = root.position.y;
     const prevZ = root.position.z;
     const prevRotZ = root.rotation.z;
     const prevRotY = root.rotation.y;
+    const prevRotX = root.rotation.x;
 
     root.position.set(
       anchorPos.x + swayX,
-      anchorPos.y + jumpY + hop,
+      anchorPos.y + jumpY + hop + flipHop,
       anchorPos.z
     );
-    root.scale.set((1.0 / Math.sqrt(squash)) * s, squash * s, (1.0 / Math.sqrt(squash)) * s);
+    root.scale.set((1.0 / Math.sqrt(combinedSquash)) * s, combinedSquash * s, (1.0 / Math.sqrt(combinedSquash)) * s);
     root.rotation.y = facingYaw + animState.currentLook.x * 0.38 * bodyLookScale + Math.sin(animState.time * 0.9) * (isPlaced ? 0.03 : 0.08);
-    root.rotation.x = facingPitch - animState.currentLook.y * 0.22 * bodyLookScale + Math.cos(animState.time * 1.8) * (isPlaced ? 0.02 : 0.04);
+    root.rotation.x = facingPitch + flipRotX - animState.currentLook.y * 0.22 * bodyLookScale + Math.cos(animState.time * 1.8) * (isPlaced ? 0.02 : 0.04);
     root.rotation.z = -(swayX / s) * 0.35 + Math.sin(animState.boopPhase) * animState.boopImpulse * 0.18;
 
     // Compute instantaneous creature velocity & angular velocity for GPGPU fur inertia
@@ -568,10 +735,13 @@ export function createBlobCreature() {
       (root.position.y - prevY) / (safeDt * s),
       (root.position.z - prevZ) / (safeDt * s)
     );
+    const dRotX = Math.atan2(Math.sin(root.rotation.x - prevRotX), Math.cos(root.rotation.x - prevRotX));
+    const dRotY = Math.atan2(Math.sin(root.rotation.y - prevRotY), Math.cos(root.rotation.y - prevRotY));
+    const dRotZ = Math.atan2(Math.sin(root.rotation.z - prevRotZ), Math.cos(root.rotation.z - prevRotZ));
     animState.angularVelocity.set(
-      0,
-      (root.rotation.y - prevRotY) / safeDt,
-      (root.rotation.z - prevRotZ) / safeDt
+      dRotX / safeDt,
+      dRotY / safeDt,
+      dRotZ / safeDt
     );
 
     // Blinking and happy squint during boop
@@ -586,7 +756,7 @@ export function createBlobCreature() {
         animState.nextBlink = 2.4 + Math.random() * 2.5;
       }
     }
-    if (animState.boopImpulse > 0.25) {
+    if (animState.boopImpulse > 0.25 || isFlipping) {
       blinkScaleY = Math.min(blinkScaleY, 0.18);
     }
 
@@ -595,6 +765,9 @@ export function createBlobCreature() {
       eye.catchlightMain.position.x = -eye.side * 0.042 + animState.currentLook.x * 0.028;
       eye.catchlightMain.position.y = 0.052 + animState.currentLook.y * 0.025;
     }
+
+    // Update active floating heart particles
+    updateHearts(safeDt, camera);
   }
 
   return {
@@ -605,6 +778,10 @@ export function createBlobCreature() {
     animState,
     setEnvironmentScale,
     triggerBoop,
+    doJoyFlip,
+    isFlipping: () => isFlipping,
+    spawnHearts,
+    heartsGroup,
     placeAt,
     resetPlacement,
     isPlaced: () => isPlaced,

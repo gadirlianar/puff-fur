@@ -3,8 +3,10 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { createBlobCreature } from './blobCreature.js';
 import { createGPUFurPhysics } from './gpuPhysics.js';
 import { createGPUFurSystem } from './furSystem.js';
-import { createMinimalUI, FUR_PRESETS } from './ui.js';
+import { createMinimalUI, FUR_PRESETS, loadCreatureProfile } from './ui.js';
 import { createEnvironmentManager } from './environments.js';
+import { playBoopSound, playPurrSound, playLevelUpSound, playFlipSound } from './audioSynth.js';
+import { capturePolaroidSnapshot } from './snapshot.js';
 
 const container = document.getElementById('canvas-container');
 const uiContainer = document.getElementById('ui-root');
@@ -18,9 +20,15 @@ const urlSearchParams = new URLSearchParams(window.location.search);
 const forceWebGL = urlSearchParams.get('gpuFur') === '0' || urlSearchParams.get('mode') === 'webgl';
 const initialGpuFur = !forceWebGL;
 
-// Initial state from our Sakura Mochi preset + Studio environment (WebGPU Fur mode by default, WebGL fallback / toggleable)
+// Restore saved creature profile from localStorage if present
+const savedProfile = loadCreatureProfile();
+const defaultPreset = FUR_PRESETS.find((p) => p.name === savedProfile.preset) || FUR_PRESETS[0];
+
+// Initial state from active preset + Studio environment (WebGPU Fur mode by default, WebGL fallback / toggleable)
 const simState = {
-  ...FUR_PRESETS[0],
+  preset: defaultPreset.name,
+  ...defaultPreset,
+  ...savedProfile,
   keyColor: '#fff7ed',
   lightAngle: -74,
   lightIntensity: 1.35,
@@ -87,6 +95,7 @@ scene.add(hemiLight);
 // 4. Create Stylized Blob Creature ("Mochi-Puff") + Hybrid GPU Fur + GPGPU Physics
 const creature = createBlobCreature();
 scene.add(creature.root);
+scene.add(creature.heartsGroup);
 
 const gpuPhysics = createGPUFurPhysics(renderer);
 // Automatic WebGL fallback if GPGPU ping-pong physics is unsupported by the device/browser
@@ -209,6 +218,92 @@ const urlEnvParam = new URLSearchParams(window.location.search).get('env');
 const initialEnvId = urlEnvParam && ALLOWED_ENV_IDS.has(urlEnvParam) ? urlEnvParam : simState.environment;
 applyEnvironmentPreset(initialEnvId);
 
+// Affection & User Bond System (Persisted in localStorage with Daily Streak)
+let loveXP = 0;
+let totalHeartsCollected = 0;
+let visitStreakDays = 1;
+
+try {
+  const savedXP = localStorage.getItem('mochi_love_xp');
+  if (savedXP !== null) loveXP = parseInt(savedXP, 10) || 0;
+  const savedHearts = localStorage.getItem('mochi_total_hearts');
+  if (savedHearts !== null) totalHeartsCollected = parseInt(savedHearts, 10) || 0;
+
+  const lastVisitDate = localStorage.getItem('mochi_last_visit_date');
+  const savedStreak = localStorage.getItem('mochi_visit_streak');
+  const todayStr = new Date().toISOString().slice(0, 10);
+
+  if (lastVisitDate) {
+    if (lastVisitDate === todayStr) {
+      visitStreakDays = parseInt(savedStreak, 10) || 1;
+    } else {
+      const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+      if (lastVisitDate === yesterday) {
+        visitStreakDays = (parseInt(savedStreak, 10) || 1) + 1;
+      } else {
+        visitStreakDays = 1;
+      }
+      // Award bonus affection for returning!
+      loveXP += 10;
+      totalHeartsCollected += 5;
+    }
+  }
+  localStorage.setItem('mochi_last_visit_date', todayStr);
+  localStorage.setItem('mochi_visit_streak', String(visitStreakDays));
+} catch (e) {}
+
+const AFFECTION_LEVELS = [
+  { level: 1, maxXP: 30, title: 'New Friend' },
+  { level: 2, maxXP: 90, title: 'Playful Pal' },
+  { level: 3, maxXP: 200, title: 'Cozy Companion' },
+  { level: 4, maxXP: 400, title: 'Beloved Fluff' },
+  { level: 5, maxXP: 750, title: 'Cherished Guardian' },
+  { level: 6, maxXP: 1200, title: 'Forever Soulmate 💖' }
+];
+
+function getCurrentLevelInfo(xp) {
+  let curLevel = AFFECTION_LEVELS[0];
+  let prevMax = 0;
+  for (let i = 0; i < AFFECTION_LEVELS.length; i++) {
+    if (xp >= AFFECTION_LEVELS[i].maxXP && i < AFFECTION_LEVELS.length - 1) {
+      prevMax = AFFECTION_LEVELS[i].maxXP;
+      curLevel = AFFECTION_LEVELS[i + 1];
+    } else {
+      curLevel = AFFECTION_LEVELS[i];
+      break;
+    }
+  }
+  const currentLove = Math.min(curLevel.maxXP - prevMax, Math.max(0, xp - prevMax));
+  const maxLove = curLevel.maxXP - prevMax;
+  return { level: curLevel.level, currentLove, maxLove, levelTitle: curLevel.title };
+}
+
+function addAffection(amount, heartCount = 1, origin = null) {
+  const prevInfo = getCurrentLevelInfo(loveXP);
+  loveXP += amount;
+  totalHeartsCollected += heartCount;
+  const nextInfo = getCurrentLevelInfo(loveXP);
+
+  try {
+    localStorage.setItem('mochi_love_xp', String(loveXP));
+    localStorage.setItem('mochi_total_hearts', String(totalHeartsCollected));
+  } catch (e) {}
+
+  if (heartCount > 0) {
+    creature.spawnHearts(heartCount, origin);
+  }
+
+  if (nextInfo.level > prevInfo.level) {
+    playLevelUpSound();
+    creature.spawnHearts(16);
+    if (hudHint) {
+      hudHint.textContent = `🎉 Level Up! You and Mochi are now ${nextInfo.levelTitle}!`;
+    }
+  }
+
+  ui.updateAffection(nextInfo.level, nextInfo.currentLove, nextInfo.maxLove, nextInfo.levelTitle, totalHeartsCollected, visitStreakDays);
+}
+
 // 5. Build Minimalist UI Controls
 const ui = createMinimalUI(uiContainer, simState, (key, value) => {
   const u = furSystem.sharedUniforms;
@@ -272,6 +367,29 @@ const ui = createMinimalUI(uiContainer, simState, (key, value) => {
     case 'windStrength':
       u.uWindStrength.value = value;
       break;
+    case 'doJoyFlip': {
+      if (creature.doJoyFlip()) {
+        playFlipSound();
+        addAffection(5, 6);
+        if (hudHint) {
+          hudHint.textContent = '🤸 Woohoo! Mochi did a joyful 360° backflip!';
+        }
+      }
+      break;
+    }
+    case 'takeSnapshot': {
+      capturePolaroidSnapshot(renderer, scene, camera, value || ui.getCreatureName());
+      if (hudHint) {
+        hudHint.textContent = '📸 Polaroid photo captured and downloaded!';
+      }
+      break;
+    }
+    case 'creatureName': {
+      if (hudHint) {
+        hudHint.textContent = `Mochi is now named "${value}"! 💕`;
+      }
+      break;
+    }
     case 'toggleRecordMode': {
       isRecordMode = Boolean(value);
       if (isRecordMode) {
@@ -325,6 +443,9 @@ const ui = createMinimalUI(uiContainer, simState, (key, value) => {
   }
 });
 
+const initialAffection = getCurrentLevelInfo(loveXP);
+ui.updateAffection(initialAffection.level, initialAffection.currentLove, initialAffection.maxLove, initialAffection.levelTitle, totalHeartsCollected, visitStreakDays);
+
 let tapToPlaceEnabled = true;
 
 envManager.onARStatusChange((statusText, isLive) => {
@@ -360,6 +481,7 @@ const pointerVelocity = new THREE.Vector3(0, 0, 0);
 let isPointerOverCreature = false;
 let pointerDownPos = { x: 0, y: 0 };
 let boopShockwave = 0.0;
+let lastPetAffectionTime = 0;
 
 function isEventOnUIOverlay(e) {
   return Boolean(
@@ -390,6 +512,15 @@ window.addEventListener('pointermove', (e) => {
 
     if (isPointerOverCreature) {
       pointerVelocity.subVectors(pointerLocalPos, prevPointerLocalPos).multiplyScalar(32.0);
+      const isDraggingOnMochi = !controls.enabled || e.buttons > 0 || e.pointerType === 'touch';
+      if (pointerVelocity.lengthSq() > 0.04 && isDraggingOnMochi) {
+        playPurrSound();
+        const now = performance.now();
+        if (now - lastPetAffectionTime > 260) {
+          lastPetAffectionTime = now;
+          addAffection(1, 1, hits[0].point);
+        }
+      }
     }
     isPointerOverCreature = true;
     container.style.cursor = 'pointer';
@@ -412,7 +543,15 @@ window.addEventListener('pointerdown', (e) => {
   if (isEventOnUIOverlay(e)) {
     return;
   }
-  if (isPointerOverCreature) {
+  pointerNDC.x = (e.clientX / window.innerWidth) * 2.0 - 1.0;
+  pointerNDC.y = -(e.clientY / window.innerHeight) * 2.0 + 1.0;
+  raycaster.setFromCamera(pointerNDC, camera);
+  const hits = raycaster.intersectObject(creature.bodyMesh, false);
+  if (hits.length > 0) {
+    isPointerOverCreature = true;
+    prevPointerLocalPos.copy(pointerLocalPos);
+    pointerLocalPos.copy(hits[0].point);
+    creature.root.worldToLocal(pointerLocalPos);
     controls.enabled = false;
   }
 });
@@ -424,7 +563,14 @@ window.addEventListener('pointerup', (e) => {
     if (isEventOnUIOverlay(e)) {
       return;
     }
-    if (isPointerOverCreature) {
+    pointerNDC.x = (e.clientX / window.innerWidth) * 2.0 - 1.0;
+    pointerNDC.y = -(e.clientY / window.innerHeight) * 2.0 + 1.0;
+    raycaster.setFromCamera(pointerNDC, camera);
+    const hits = raycaster.intersectObject(creature.bodyMesh, false);
+    const hitCreature = hits.length > 0 || isPointerOverCreature;
+    if (hitCreature) {
+      playBoopSound();
+      addAffection(3, 4, hits[0] ? hits[0].point : null);
       creature.triggerBoop();
       boopShockwave = 1.0;
     } else if (simState.environment === 'ar' && tapToPlaceEnabled) {
@@ -512,8 +658,8 @@ function animate() {
   // Decay pointer velocity smoothly
   pointerVelocity.multiplyScalar(Math.exp(-dt * 12.0));
 
-  // Update creature breathing, eye tracking, viewer-facing AR orientation, and bounce inertia
-  creature.update(dt, pointerNDC, camera.position, simState.environment === 'ar');
+  // Update creature breathing, eye tracking, viewer-facing AR orientation, bounce inertia & floating hearts
+  creature.update(dt, pointerNDC, camera.position, simState.environment === 'ar', camera);
 
   // Update active 3D / AR environment (Studio, Meadow, Cozy Highrise, AR View)
   envManager.update(elapsedTime, simState.windStrength, creature.root);

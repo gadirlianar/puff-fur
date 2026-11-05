@@ -1,11 +1,15 @@
-// Minimalist, XSS-safe Glassmorphic DOM UI for GPU Fur Simulation
+// =============================================================================
+// MINIMALIST ULTRA-GLASSMORPHIC FLOATING DOCK UI FOR MOCHI-PUFF
+// =============================================================================
 // Features:
-// 1. Primary Scene Selection Menu as a top-floating glass pill bar
-// 2. Collapsible Materials & Lighting Settings panel on the side
-// 3. Native Google Sans font typography with full fallbacks
-// 4. Strict pure safe DOM construction with input sanitization
+// 1. Dynamic Island / Linear-style glass dock with 4 tabs: Style, Atmosphere, Care, Photo
+// 2. Ultra-compact floating pill collapse state
+// 3. LocalStorage persistence for name, custom colors, presets, and affection
+// 4. Procedural audio integration, joyful acrobatics, and polaroid photo booth
+// 5. Full backwards compatibility with Three.js rendering, WebGPU/WebGL toggle, and AR modes
 
 import { ENVIRONMENT_PRESETS, sanitizeEnvId } from './environments.js';
+import { isAudioMuted, toggleAudioMute } from './audioSynth.js';
 
 const HEX_COLOR_REGEX = /^#[0-9a-fA-F]{6}$/;
 
@@ -69,9 +73,56 @@ export const FUR_PRESETS = [
   }
 ];
 
+export function saveCreatureProfile(data) {
+  try {
+    if (data.name) localStorage.setItem('mochi_name', data.name.trim());
+    if (data.preset) localStorage.setItem('mochi_preset', data.preset);
+    if (data.baseColor) localStorage.setItem('mochi_base_color', data.baseColor);
+    if (data.tipColor) localStorage.setItem('mochi_tip_color', data.tipColor);
+    if (data.furLength !== undefined) localStorage.setItem('mochi_fur_length', String(data.furLength));
+    if (data.furDensity !== undefined) localStorage.setItem('mochi_fur_density', String(data.furDensity));
+    if (data.curliness !== undefined) localStorage.setItem('mochi_curliness', String(data.curliness));
+    if (data.clumping !== undefined) localStorage.setItem('mochi_clumping', String(data.clumping));
+  } catch (e) {}
+}
+
+export function loadCreatureProfile() {
+  const profile = { name: 'Mochi-Puff' };
+  try {
+    const name = localStorage.getItem('mochi_name');
+    if (name) profile.name = name.trim();
+    const preset = localStorage.getItem('mochi_preset');
+    if (preset) profile.preset = preset;
+    const baseColor = localStorage.getItem('mochi_base_color');
+    if (baseColor && HEX_COLOR_REGEX.test(baseColor)) profile.baseColor = baseColor;
+    const tipColor = localStorage.getItem('mochi_tip_color');
+    if (tipColor && HEX_COLOR_REGEX.test(tipColor)) profile.tipColor = tipColor;
+    const furLength = localStorage.getItem('mochi_fur_length');
+    if (furLength !== null && !isNaN(parseFloat(furLength))) profile.furLength = parseFloat(furLength);
+    const furDensity = localStorage.getItem('mochi_fur_density');
+    if (furDensity !== null && !isNaN(parseFloat(furDensity))) profile.furDensity = parseFloat(furDensity);
+    const curliness = localStorage.getItem('mochi_curliness');
+    if (curliness !== null && !isNaN(parseFloat(curliness))) profile.curliness = parseFloat(curliness);
+    const clumping = localStorage.getItem('mochi_clumping');
+    if (clumping !== null && !isNaN(parseFloat(clumping))) profile.clumping = parseFloat(clumping);
+  } catch (e) {}
+  return profile;
+}
+
 export function createMinimalUI(container, state, onChange) {
+  // Load saved creature profile if present
+  const savedProfile = loadCreatureProfile();
+  let creatureName = savedProfile.name || 'Mochi-Puff';
+  if (savedProfile.preset) state.preset = savedProfile.preset;
+  if (savedProfile.baseColor) state.baseColor = savedProfile.baseColor;
+  if (savedProfile.tipColor) state.tipColor = savedProfile.tipColor;
+  if (savedProfile.furLength !== undefined) state.furLength = savedProfile.furLength;
+  if (savedProfile.furDensity !== undefined) state.furDensity = savedProfile.furDensity;
+  if (savedProfile.curliness !== undefined) state.curliness = savedProfile.curliness;
+  if (savedProfile.clumping !== undefined) state.clumping = savedProfile.clumping;
+
   // =========================================================================
-  // 1. PRIMARY SCENE SELECTION MENU (TOP GLASS PILL BAR)
+  // 1. TOP SCENE SELECTION PILL BAR (STREAMLINED & SYNCHRONIZED)
   // =========================================================================
   let sceneNav = document.getElementById('scene-nav');
   if (!sceneNav) {
@@ -84,6 +135,7 @@ export function createMinimalUI(container, state, onChange) {
   sceneNav.replaceChildren();
 
   const sceneButtons = {};
+  const atmosphereEnvButtons = {};
 
   for (const env of ENVIRONMENT_PRESETS) {
     const pill = document.createElement('button');
@@ -120,7 +172,7 @@ export function createMinimalUI(container, state, onChange) {
     sceneNav.appendChild(pill);
   }
 
-  // Divider + 1-Click WebGL / GPU Fur Toggle Pill in Top Floating Bar
+  // Quick 1-Click GPU Fur Toggle in top bar
   const navDivider = document.createElement('span');
   navDivider.className = 'scene-nav-divider';
   navDivider.setAttribute('aria-hidden', 'true');
@@ -129,24 +181,26 @@ export function createMinimalUI(container, state, onChange) {
   const topGpuFurPill = document.createElement('button');
   topGpuFurPill.type = 'button';
   topGpuFurPill.className = 'scene-pill gpu-fur-pill';
-  topGpuFurPill.setAttribute('aria-label', 'Toggle between default WebGL Fur and full GPU Fur');
+  topGpuFurPill.setAttribute('aria-label', 'Toggle GPU Fur simulation mode');
 
   const topGpuDot = document.createElement('span');
   topGpuDot.className = 'scene-pill-dot';
 
   const topGpuLabel = document.createElement('span');
   topGpuLabel.className = 'scene-pill-label';
+  topGpuLabel.textContent = 'GPU Fur';
 
   topGpuFurPill.appendChild(topGpuDot);
   topGpuFurPill.appendChild(topGpuLabel);
   sceneNav.appendChild(topGpuFurPill);
 
   // =========================================================================
-  // 2. COLLAPSIBLE MATERIALS & LIGHTING SETTINGS PANEL (SIDE GLASS CARD ON DESKTOP, BOTTOM SHEET ON MOBILE)
+  // 2. ULTRA-MINIMALIST GLASS DOCK CONTAINER (#ui-root)
   // =========================================================================
   container.replaceChildren();
+  container.className = 'minimal-dock';
 
-  // Mobile Bottom Sheet Backdrop & Bottom Controls Trigger Button (hidden on desktop via CSS)
+  // Mobile Bottom Sheet Backdrop & Controls Button
   let mobileBackdrop = document.getElementById('mobile-sheet-backdrop');
   if (!mobileBackdrop) {
     mobileBackdrop = document.createElement('div');
@@ -156,726 +210,787 @@ export function createMinimalUI(container, state, onChange) {
     document.body.appendChild(mobileBackdrop);
   }
 
-  let mobileControlsBtn = document.getElementById('mobile-controls-btn');
-  if (!mobileControlsBtn) {
-    mobileControlsBtn = document.createElement('button');
-    mobileControlsBtn.id = 'mobile-controls-btn';
-    mobileControlsBtn.type = 'button';
-    mobileControlsBtn.className = 'mobile-controls-btn';
-    mobileControlsBtn.setAttribute('aria-label', 'Open simulation controls');
-    mobileControlsBtn.setAttribute('aria-expanded', 'false');
-    document.body.appendChild(mobileControlsBtn);
+  let mobileTrigger = document.getElementById('mobile-controls-btn');
+  if (!mobileTrigger) {
+    mobileTrigger = document.createElement('button');
+    mobileTrigger.id = 'mobile-controls-btn';
+    mobileTrigger.type = 'button';
+    mobileTrigger.className = 'mobile-controls-btn';
+    mobileTrigger.setAttribute('aria-label', 'Open Mochi-Puff Controls');
+    mobileTrigger.innerHTML = `
+      <span class="mobile-controls-btn-dot"></span>
+      <span>Controls</span>
+      <span class="mobile-controls-btn-sep">·</span>
+      <span class="mobile-controls-btn-scene" id="mobile-btn-scene">Studio</span>
+    `;
+    document.body.appendChild(mobileTrigger);
   }
-  mobileControlsBtn.replaceChildren();
+  const mobileBtnScene = document.getElementById('mobile-btn-scene');
 
-  const mobileBtnDot = document.createElement('span');
-  mobileBtnDot.className = 'mobile-controls-btn-dot';
-
-  const mobileBtnLabel = document.createElement('span');
-  mobileBtnLabel.className = 'mobile-controls-btn-label';
-  mobileBtnLabel.textContent = 'Controls';
-
-  const mobileBtnSep = document.createElement('span');
-  mobileBtnSep.className = 'mobile-controls-btn-sep';
-  mobileBtnSep.setAttribute('aria-hidden', 'true');
-  mobileBtnSep.textContent = '·';
-
-  const mobileBtnScene = document.createElement('span');
-  mobileBtnScene.className = 'mobile-controls-btn-scene';
-  const currentPresetInit =
-    ENVIRONMENT_PRESETS.find((e) => e.id === (state.environment || 'studio')) ||
-    ENVIRONMENT_PRESETS[0];
-  mobileBtnScene.textContent = currentPresetInit.name;
-
-  mobileControlsBtn.appendChild(mobileBtnDot);
-  mobileControlsBtn.appendChild(mobileBtnLabel);
-  mobileControlsBtn.appendChild(mobileBtnSep);
-  mobileControlsBtn.appendChild(mobileBtnScene);
-
-  // Mobile sheet drag handle bar (hidden on desktop via CSS)
-  const handleWrap = document.createElement('div');
-  handleWrap.className = 'mobile-sheet-handle-wrap';
-  handleWrap.setAttribute('aria-hidden', 'true');
-  const handleBar = document.createElement('div');
-  handleBar.className = 'mobile-sheet-handle';
-  handleWrap.appendChild(handleBar);
-  container.appendChild(handleWrap);
-
-  // Glass Header Bar with Title and Collapse / Expand / Close toggle
-  const header = document.createElement('div');
-  header.className = 'ui-header';
-
-  const titleWrap = document.createElement('div');
-  titleWrap.className = 'ui-title-wrap';
-
-  const dot = document.createElement('span');
-  dot.className = 'ui-dot';
-
-  const title = document.createElement('span');
-  title.className = 'ui-title';
-  title.textContent = 'Materials & Lighting';
-
-  titleWrap.appendChild(dot);
-  titleWrap.appendChild(title);
-
-  const toggleBtn = document.createElement('button');
-  toggleBtn.type = 'button';
-  toggleBtn.className = 'ui-toggle-btn';
-
-  function isMobileViewport() {
-    return window.matchMedia('(max-width: 768px)').matches;
+  function openMobileSheet() {
+    container.classList.add('mobile-sheet-open');
+    mobileBackdrop.classList.add('active');
+    document.body.classList.add('mobile-sheet-active');
   }
 
-  function syncToggleBtnLabel() {
-    if (isMobileViewport()) {
-      const isOpen = container.classList.contains('mobile-sheet-open');
-      toggleBtn.textContent = isOpen ? 'Done' : 'Controls';
-      toggleBtn.setAttribute('aria-expanded', String(isOpen));
-      mobileControlsBtn.setAttribute('aria-expanded', String(isOpen));
-    } else {
-      const isCollapsed = container.classList.contains('collapsed');
-      toggleBtn.textContent = isCollapsed ? 'Expand' : 'Collapse';
-      toggleBtn.setAttribute('aria-expanded', String(!isCollapsed));
-    }
+  function closeMobileSheet() {
+    container.classList.remove('mobile-sheet-open');
+    mobileBackdrop.classList.remove('active');
+    document.body.classList.remove('mobile-sheet-active');
   }
 
-  function setMobileSheetOpen(open) {
-    const isOpen = Boolean(open);
-    container.classList.toggle('mobile-sheet-open', isOpen);
-    mobileBackdrop.classList.toggle('active', isOpen);
-    document.body.classList.toggle('mobile-sheet-active', isOpen);
-    syncToggleBtnLabel();
-  }
+  mobileTrigger.onclick = openMobileSheet;
+  mobileBackdrop.onclick = closeMobileSheet;
 
-  toggleBtn.setAttribute('aria-label', 'Toggle settings panel');
-  syncToggleBtnLabel();
+  // --- Drag Handle for Mobile Sheet ---
+  const mobileHandleWrap = document.createElement('div');
+  mobileHandleWrap.className = 'mobile-sheet-handle-wrap';
+  const mobileHandle = document.createElement('div');
+  mobileHandle.className = 'mobile-sheet-handle';
+  mobileHandleWrap.appendChild(mobileHandle);
+  mobileHandleWrap.addEventListener('click', closeMobileSheet);
+  container.appendChild(mobileHandleWrap);
 
-  mobileControlsBtn.addEventListener('click', (e) => {
+  // --- Collapsed State Pill (Apple Dynamic Island aesthetic) ---
+  const collapsedPill = document.createElement('div');
+  collapsedPill.className = 'dock-collapsed-pill';
+  collapsedPill.setAttribute('role', 'button');
+  collapsedPill.setAttribute('tabindex', '0');
+  collapsedPill.setAttribute('aria-label', 'Expand controls');
+
+  const pillAvatar = document.createElement('span');
+  pillAvatar.className = 'dock-pill-avatar';
+  pillAvatar.textContent = '✨';
+
+  const pillName = document.createElement('span');
+  pillName.className = 'dock-pill-name';
+  pillName.textContent = creatureName;
+
+  const pillBadge = document.createElement('span');
+  pillBadge.className = 'dock-pill-badge';
+  pillBadge.textContent = '💖 Lv.1';
+
+  const pillExpandBtn = document.createElement('span');
+  pillExpandBtn.className = 'dock-pill-expand';
+  pillExpandBtn.textContent = '▾';
+
+  collapsedPill.appendChild(pillAvatar);
+  collapsedPill.appendChild(pillName);
+  collapsedPill.appendChild(pillBadge);
+  collapsedPill.appendChild(pillExpandBtn);
+  container.appendChild(collapsedPill);
+
+  // --- Expanded Dock View ---
+  const expandedView = document.createElement('div');
+  expandedView.className = 'dock-expanded-view';
+
+  // 1. Dock Header
+  const dockHeader = document.createElement('div');
+  dockHeader.className = 'dock-header';
+
+  const titleGroup = document.createElement('div');
+  titleGroup.className = 'dock-title-group';
+
+  const dockIcon = document.createElement('span');
+  dockIcon.className = 'dock-icon';
+  dockIcon.textContent = '✨';
+
+  const dockTextWrap = document.createElement('div');
+  dockTextWrap.className = 'dock-title-text';
+
+  const dockNameDisplay = document.createElement('span');
+  dockNameDisplay.className = 'dock-name-display';
+  dockNameDisplay.textContent = creatureName;
+
+  const dockSubtitle = document.createElement('span');
+  dockSubtitle.className = 'dock-subtitle';
+  dockSubtitle.textContent = '3D GPU Companion';
+
+  dockTextWrap.appendChild(dockNameDisplay);
+  dockTextWrap.appendChild(dockSubtitle);
+  titleGroup.appendChild(dockIcon);
+  titleGroup.appendChild(dockTextWrap);
+
+  const headerActions = document.createElement('div');
+  headerActions.className = 'dock-header-actions';
+
+  const soundBtn = document.createElement('button');
+  soundBtn.type = 'button';
+  soundBtn.className = 'dock-action-icon-btn';
+  soundBtn.setAttribute('title', isAudioMuted() ? 'Sound: Muted (Click to Unmute)' : 'Sound: ON (Click to Mute)');
+  soundBtn.setAttribute('aria-label', 'Toggle audio sound');
+  soundBtn.textContent = isAudioMuted() ? '🔇' : '🔊';
+
+  soundBtn.addEventListener('click', (e) => {
     e.stopPropagation();
-    setMobileSheetOpen(true);
+    const muted = toggleAudioMute();
+    soundBtn.textContent = muted ? '🔇' : '🔊';
+    soundBtn.setAttribute('title', muted ? 'Sound: Muted (Click to Unmute)' : 'Sound: ON (Click to Mute)');
+    if (careSoundToggleBtn) {
+      careSoundToggleBtn.textContent = muted ? '🔇 Sound: Muted' : '🔊 Sound: Active';
+      careSoundToggleBtn.classList.toggle('active', !muted);
+    }
   });
 
-  mobileBackdrop.addEventListener('click', (e) => {
+  const collapseBtn = document.createElement('button');
+  collapseBtn.type = 'button';
+  collapseBtn.className = 'dock-action-icon-btn dock-collapse-btn';
+  collapseBtn.setAttribute('title', 'Minimize dock to compact pill');
+  collapseBtn.setAttribute('aria-label', 'Minimize dock');
+  collapseBtn.textContent = '−';
+
+  collapseBtn.addEventListener('click', (e) => {
     e.stopPropagation();
-    setMobileSheetOpen(false);
+    setDockCollapsed(true);
   });
 
-  handleWrap.addEventListener('click', (e) => {
-    e.stopPropagation();
-    if (isMobileViewport()) {
-      setMobileSheetOpen(false);
-    }
+  collapsedPill.addEventListener('click', () => {
+    setDockCollapsed(false);
   });
 
-  // Support downward swipe gesture on the drag handle / header to dismiss the bottom sheet on mobile
-  let touchStartY = null;
-  function onSheetTouchStart(e) {
-    if (!isMobileViewport()) return;
-    if (e.touches && e.touches.length === 1) {
-      touchStartY = e.touches[0].clientY;
-    }
+  headerActions.appendChild(soundBtn);
+  headerActions.appendChild(collapseBtn);
+  dockHeader.appendChild(titleGroup);
+  dockHeader.appendChild(headerActions);
+  expandedView.appendChild(dockHeader);
+
+  function setDockCollapsed(collapsed) {
+    container.classList.toggle('collapsed', collapsed);
+    try {
+      localStorage.setItem('mochi_dock_collapsed', String(collapsed));
+    } catch (e) {}
   }
-  function onSheetTouchEnd(e) {
-    if (touchStartY === null || !isMobileViewport()) return;
-    if (e.changedTouches && e.changedTouches.length === 1) {
-      const deltaY = e.changedTouches[0].clientY - touchStartY;
-      if (deltaY > 36) {
-        setMobileSheetOpen(false);
+
+  // Restore collapsed preference
+  try {
+    if (localStorage.getItem('mochi_dock_collapsed') === 'true') {
+      container.classList.add('collapsed');
+    }
+  } catch (e) {}
+
+  // 2. Segmented Dock Tab Bar
+  const tabBar = document.createElement('nav');
+  tabBar.className = 'dock-tab-bar';
+  tabBar.setAttribute('role', 'tablist');
+
+  const tabDefs = [
+    { id: 'style', icon: '🎨', label: 'Style' },
+    { id: 'atmosphere', icon: '💡', label: 'Mood' },
+    { id: 'care', icon: '✨', label: 'Care' },
+    { id: 'snapshot', icon: '📸', label: 'Photo' }
+  ];
+
+  const tabButtons = {};
+  const tabPanels = {};
+
+  const panelsWrap = document.createElement('div');
+  panelsWrap.className = 'dock-panels-wrap';
+
+  let activeTabId = 'style';
+
+  function switchTab(targetId) {
+    activeTabId = targetId;
+    tabDefs.forEach((def) => {
+      const isSel = def.id === targetId;
+      if (tabButtons[def.id]) {
+        tabButtons[def.id].classList.toggle('active', isSel);
+        tabButtons[def.id].setAttribute('aria-selected', String(isSel));
       }
-    }
-    touchStartY = null;
+      if (tabPanels[def.id]) {
+        tabPanels[def.id].classList.toggle('active', isSel);
+      }
+    });
   }
-  handleWrap.addEventListener('touchstart', onSheetTouchStart, { passive: true });
-  handleWrap.addEventListener('touchend', onSheetTouchEnd, { passive: true });
-  header.addEventListener('touchstart', onSheetTouchStart, { passive: true });
-  header.addEventListener('touchend', onSheetTouchEnd, { passive: true });
 
-  window.addEventListener('resize', () => {
-    if (!isMobileViewport() && container.classList.contains('mobile-sheet-open')) {
-      setMobileSheetOpen(false);
-    } else {
-      syncToggleBtnLabel();
-    }
+  tabDefs.forEach((def, index) => {
+    const tabBtn = document.createElement('button');
+    tabBtn.type = 'button';
+    tabBtn.className = `dock-tab ${index === 0 ? 'active' : ''}`;
+    tabBtn.setAttribute('role', 'tab');
+    tabBtn.setAttribute('data-tab', def.id);
+    tabBtn.setAttribute('aria-selected', index === 0 ? 'true' : 'false');
+
+    const tabIcon = document.createElement('span');
+    tabIcon.className = 'dock-tab-icon';
+    tabIcon.textContent = def.icon;
+
+    const tabLabel = document.createElement('span');
+    tabLabel.className = 'dock-tab-label';
+    tabLabel.textContent = def.label;
+
+    tabBtn.appendChild(tabIcon);
+    tabBtn.appendChild(tabLabel);
+
+    tabBtn.addEventListener('click', () => {
+      switchTab(def.id);
+    });
+
+    tabButtons[def.id] = tabBtn;
+    tabBar.appendChild(tabBtn);
+
+    const panel = document.createElement('div');
+    panel.className = `dock-panel ${index === 0 ? 'active' : ''}`;
+    panel.setAttribute('role', 'tabpanel');
+    panel.setAttribute('data-panel', def.id);
+    tabPanels[def.id] = panel;
+    panelsWrap.appendChild(panel);
   });
 
-  toggleBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    if (isMobileViewport()) {
-      const nextOpen = !container.classList.contains('mobile-sheet-open');
-      setMobileSheetOpen(nextOpen);
-      return;
-    }
-    const isCollapsed = container.classList.toggle('collapsed');
-    toggleBtn.textContent = isCollapsed ? 'Expand' : 'Collapse';
-    toggleBtn.setAttribute('aria-expanded', String(!isCollapsed));
-  });
+  expandedView.appendChild(tabBar);
+  expandedView.appendChild(panelsWrap);
+  container.appendChild(expandedView);
 
-  header.addEventListener('click', () => {
-    if (isMobileViewport()) {
-      return;
-    }
-    if (container.classList.contains('collapsed')) {
-      container.classList.remove('collapsed');
-      toggleBtn.textContent = 'Collapse';
-      toggleBtn.setAttribute('aria-expanded', 'true');
-    }
-  });
-
-  header.appendChild(titleWrap);
-  header.appendChild(toggleBtn);
-  container.appendChild(header);
-
-  // Body container that collapses smoothly
-  const body = document.createElement('div');
-  body.className = 'ui-body';
-  container.appendChild(body);
-
+  // References for live synchronization
   const sliderRefs = {};
   const colorRefs = {};
-  const mobileSceneButtons = {};
 
-  function addSection(titleText) {
-    const sec = document.createElement('section');
-    sec.className = 'ui-section';
-    const h = document.createElement('div');
-    h.className = 'ui-section-title';
-    h.textContent = titleText;
-    sec.appendChild(h);
-    body.appendChild(sec);
-    return sec;
+  function createSliderControl(parent, labelText, key, min, max, step, formatFn) {
+    const row = document.createElement('div');
+    row.className = 'dock-control-row';
+
+    const labelRow = document.createElement('div');
+    labelRow.className = 'dock-label-row';
+
+    const label = document.createElement('span');
+    label.className = 'dock-control-label';
+    label.textContent = labelText;
+
+    const valSpan = document.createElement('span');
+    valSpan.className = 'dock-control-value';
+    const initVal = state[key] !== undefined ? state[key] : min;
+    valSpan.textContent = formatFn(initVal);
+
+    labelRow.appendChild(label);
+    labelRow.appendChild(valSpan);
+
+    const slider = document.createElement('input');
+    slider.type = 'range';
+    slider.min = String(min);
+    slider.max = String(max);
+    slider.step = String(step);
+    slider.value = String(initVal);
+    slider.className = 'dock-range-slider';
+    slider.setAttribute('aria-label', labelText);
+
+    slider.addEventListener('input', (e) => {
+      const v = clampNumber(e.target.value, min, max, initVal);
+      state[key] = v;
+      valSpan.textContent = formatFn(v);
+      onChange(key, v);
+      saveCreatureProfile(state);
+    });
+
+    row.appendChild(labelRow);
+    row.appendChild(slider);
+    parent.appendChild(row);
+
+    sliderRefs[key] = { input: slider, valSpan, formatFn };
   }
 
-  // --- Mobile-Only Section: Scene Selection inside the Bottom Sheet ---
-  const mobileSceneSection = addSection('Scene Selection');
-  mobileSceneSection.classList.add('mobile-scene-section');
+  // =========================================================================
+  // TAB 1: 🎨 STYLE (PRESETS, FUR FLUFF, CURLINESS, COLORS)
+  // =========================================================================
+  const stylePanel = tabPanels['style'];
 
-  const mobileSceneGrid = document.createElement('div');
-  mobileSceneGrid.className = 'preset-grid mobile-scene-grid';
+  // 1. Preset Cards Grid
+  const presetTitle = document.createElement('div');
+  presetTitle.className = 'dock-subhead';
+  presetTitle.textContent = 'Curated Looks';
+  stylePanel.appendChild(presetTitle);
 
-  for (const env of ENVIRONMENT_PRESETS) {
-    const mBtn = document.createElement('button');
-    mBtn.type = 'button';
-    mBtn.className = 'preset-btn mobile-scene-btn';
-    mBtn.setAttribute('data-env', env.id);
-    mBtn.setAttribute('aria-label', `${env.name} · ${env.subtitle}`);
+  const presetGrid = document.createElement('div');
+  presetGrid.className = 'preset-cards-grid';
+
+  const presetCardElements = {};
+
+  function updatePresetCardsUI() {
+    Object.keys(presetCardElements).forEach((name) => {
+      const isSel = state.preset === name;
+      presetCardElements[name].classList.toggle('active', isSel);
+      presetCardElements[name].setAttribute('aria-pressed', String(isSel));
+    });
+  }
+
+  FUR_PRESETS.forEach((preset) => {
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = `preset-card ${state.preset === preset.name ? 'active' : ''}`;
+    card.setAttribute('aria-label', `Apply preset ${preset.name}`);
+    card.setAttribute('aria-pressed', String(state.preset === preset.name));
+
+    const cardDot = document.createElement('span');
+    cardDot.className = 'preset-card-circle';
+    cardDot.style.background = `linear-gradient(135deg, ${preset.tipColor} 0%, ${preset.baseColor} 100%)`;
+
+    const cardName = document.createElement('span');
+    cardName.className = 'preset-card-title';
+    cardName.textContent = preset.name;
+
+    card.appendChild(cardDot);
+    card.appendChild(cardName);
+
+    card.addEventListener('click', () => {
+      Object.assign(state, preset);
+      state.preset = preset.name;
+      updatePresetCardsUI();
+      syncAllUI();
+      ['furLength', 'furDensity', 'clumping', 'curliness', 'roughness', 'specular', 'baseColor', 'tipColor'].forEach((k) => {
+        onChange(k, state[k]);
+      });
+      saveCreatureProfile(state);
+    });
+
+    presetCardElements[preset.name] = card;
+    presetGrid.appendChild(card);
+  });
+  stylePanel.appendChild(presetGrid);
+
+  // 2. Fur Touch & Groom Sliders
+  const groomingTitle = document.createElement('div');
+  groomingTitle.className = 'dock-subhead';
+  groomingTitle.textContent = 'Fur Grooming & Physics';
+  stylePanel.appendChild(groomingTitle);
+
+  createSliderControl(stylePanel, 'Fur Length', 'furLength', 0.12, 0.58, 0.01, (v) => `${(v * 100).toFixed(0)}%`);
+  createSliderControl(stylePanel, 'Fluff Density', 'furDensity', 0.35, 1.0, 0.01, (v) => `${(v * 100).toFixed(0)}%`);
+  createSliderControl(stylePanel, 'Wave & Curl', 'curliness', 0.0, 1.0, 0.01, (v) => `${(v * 100).toFixed(0)}%`);
+  createSliderControl(stylePanel, 'Tuft Clumping', 'clumping', 0.0, 1.0, 0.01, (v) => `${(v * 100).toFixed(0)}%`);
+
+  // 3. Fur Dual-Color Palette
+  const colorTitle = document.createElement('div');
+  colorTitle.className = 'dock-subhead';
+  colorTitle.textContent = 'Coat Color Palette';
+  stylePanel.appendChild(colorTitle);
+
+  const colorsRow = document.createElement('div');
+  colorsRow.className = 'dock-dual-color-row';
+
+  function createColorPickerCell(parent, labelText, key) {
+    const cell = document.createElement('label');
+    cell.className = 'dock-color-picker-cell';
+
+    const swatch = document.createElement('span');
+    swatch.className = 'dock-color-swatch';
+    swatch.style.background = state[key] || '#ffffff';
+
+    const label = document.createElement('span');
+    label.className = 'dock-color-label';
+    label.textContent = labelText;
+
+    const colorInput = document.createElement('input');
+    colorInput.type = 'color';
+    colorInput.value = state[key] || '#ffffff';
+    colorInput.className = 'dock-native-color-input';
+    colorInput.setAttribute('aria-label', labelText);
+
+    colorInput.addEventListener('input', (e) => {
+      const hex = sanitizeHexColor(e.target.value, state[key]);
+      state[key] = hex;
+      swatch.style.background = hex;
+      onChange(key, hex);
+      saveCreatureProfile(state);
+    });
+
+    colorRefs[key] = colorInput;
+    cell.appendChild(swatch);
+    cell.appendChild(label);
+    cell.appendChild(colorInput);
+    parent.appendChild(cell);
+  }
+
+  createColorPickerCell(colorsRow, 'Undercoat (Root)', 'baseColor');
+  createColorPickerCell(colorsRow, 'Surface (Tip)', 'tipColor');
+  stylePanel.appendChild(colorsRow);
+
+  // =========================================================================
+  // TAB 2: 💡 ATMOSPHERE (ENVIRONMENTS, LIGHTING, WIND, AR CAMERA)
+  // =========================================================================
+  const atmospherePanel = tabPanels['atmosphere'];
+
+  const envTitle = document.createElement('div');
+  envTitle.className = 'dock-subhead';
+  envTitle.textContent = '3D Environment';
+  atmospherePanel.appendChild(envTitle);
+
+  const envGrid = document.createElement('div');
+  envGrid.className = 'preset-cards-grid';
+
+  ENVIRONMENT_PRESETS.forEach((env) => {
+    const envCard = document.createElement('button');
+    envCard.type = 'button';
+    envCard.className = 'preset-card';
+    envCard.setAttribute('data-env', env.id);
     const isCur = (state.environment || 'studio') === env.id;
-    if (isCur) {
-      mBtn.classList.add('active');
-      mBtn.setAttribute('aria-selected', 'true');
-    } else {
-      mBtn.setAttribute('aria-selected', 'false');
-    }
+    if (isCur) envCard.classList.add('active');
 
-    const mDot = document.createElement('span');
-    mDot.className = 'scene-pill-dot';
+    const envDot = document.createElement('span');
+    envDot.className = 'preset-card-circle';
+    envDot.style.background = env.id === 'studio' ? '#a855f7' : (env.id === 'meadow' ? '#22c55e' : (env.id === 'highrise' ? '#f59e0b' : '#38bdf8'));
 
-    const mLabel = document.createElement('span');
-    mLabel.className = 'preset-label';
-    mLabel.textContent = env.name;
+    const envName = document.createElement('span');
+    envName.className = 'preset-card-title';
+    envName.textContent = env.name;
 
-    mBtn.appendChild(mDot);
-    mBtn.appendChild(mLabel);
+    envCard.appendChild(envDot);
+    envCard.appendChild(envName);
 
-    mBtn.addEventListener('click', () => {
+    envCard.addEventListener('click', () => {
       const safeEnv = sanitizeEnvId(env.id, 'studio');
       state.environment = safeEnv;
       updateEnvSelectionUI(safeEnv);
       onChange('environment', safeEnv);
     });
 
-    mobileSceneButtons[env.id] = mBtn;
-    mobileSceneGrid.appendChild(mBtn);
-  }
-  mobileSceneSection.appendChild(mobileSceneGrid);
+    atmosphereEnvButtons[env.id] = envCard;
+    envGrid.appendChild(envCard);
+  });
+  atmospherePanel.appendChild(envGrid);
 
-  function addSlider(parent, key, labelText, min, max, step, formatFn) {
-    const row = document.createElement('div');
-    row.className = 'control-row';
+  // Lighting & Wind
+  const lightTitle = document.createElement('div');
+  lightTitle.className = 'dock-subhead';
+  lightTitle.textContent = 'Atmospheric Lighting & Breeze';
+  atmospherePanel.appendChild(lightTitle);
 
-    const labelRow = document.createElement('div');
-    labelRow.className = 'control-label-row';
+  createSliderControl(atmospherePanel, 'Key Light Orbit', 'lightAngle', -180, 180, 1, (v) => `${Math.round(v)}°`);
+  createSliderControl(atmospherePanel, 'Light Warmth & Lux', 'lightIntensity', 0.4, 2.6, 0.05, (v) => `${v.toFixed(2)}x`);
+  createSliderControl(atmospherePanel, 'Wind Breeze Speed', 'windStrength', 0.0, 2.4, 0.05, (v) => `${v.toFixed(2)}x`);
 
-    const lbl = document.createElement('span');
-    lbl.className = 'control-label';
-    lbl.textContent = labelText;
+  // WebGPU Fur Engine Toggle Row
+  const engineRow = document.createElement('div');
+  engineRow.className = 'dock-subhead-row';
 
-    const valSpan = document.createElement('span');
-    valSpan.className = 'control-val';
-    valSpan.textContent = formatFn(state[key]);
+  const engineLabel = document.createElement('span');
+  engineLabel.className = 'dock-subhead';
+  engineLabel.textContent = 'Rendering Engine';
 
-    labelRow.appendChild(lbl);
-    labelRow.appendChild(valSpan);
+  const engineModeBtn = document.createElement('button');
+  engineModeBtn.type = 'button';
+  engineModeBtn.className = 'dock-toggle-pill-btn';
+  engineModeBtn.textContent = state.gpuFurEnabled ? '✨ 64-Shell WebGPU Fur' : '⚡ Analytical WebGL';
+  engineModeBtn.classList.toggle('active', Boolean(state.gpuFurEnabled));
 
-    const input = document.createElement('input');
-    input.type = 'range';
-    input.min = String(min);
-    input.max = String(max);
-    input.step = String(step);
-    input.value = String(state[key]);
-    input.setAttribute('aria-label', labelText);
-
-    input.addEventListener('input', () => {
-      const sanitized = clampNumber(input.value, min, max, state[key]);
-      state[key] = sanitized;
-      valSpan.textContent = formatFn(sanitized);
-      onChange(key, sanitized);
-    });
-
-    row.appendChild(labelRow);
-    row.appendChild(input);
-    parent.appendChild(row);
-
-    sliderRefs[key] = { input, valSpan, formatFn };
-  }
-
-  // --- Section 1: Quick Presets ---
-  const presetSection = addSection('Quick Presets');
-  const presetGrid = document.createElement('div');
-  presetGrid.className = 'preset-grid';
-
-  for (const preset of FUR_PRESETS) {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'preset-btn';
-
-    const pDot = document.createElement('span');
-    pDot.className = 'preset-dot';
-    pDot.style.background = `linear-gradient(135deg, ${preset.tipColor} 0%, ${preset.baseColor} 100%)`;
-
-    const pLabel = document.createElement('span');
-    pLabel.className = 'preset-label';
-    pLabel.textContent = preset.name;
-
-    btn.appendChild(pDot);
-    btn.appendChild(pLabel);
-
-    btn.addEventListener('click', () => {
-      Object.keys(preset).forEach((k) => {
-        if (k === 'name') return;
-        state[k] = preset[k];
-        if (sliderRefs[k]) {
-          sliderRefs[k].input.value = String(preset[k]);
-          sliderRefs[k].valSpan.textContent = sliderRefs[k].formatFn(preset[k]);
-        }
-        if (colorRefs[k]) {
-          colorRefs[k].value = preset[k];
-        }
-        onChange(k, preset[k]);
-      });
-    });
-    presetGrid.appendChild(btn);
-  }
-  presetSection.appendChild(presetGrid);
-
-  // --- Section 2: Coat Materials (Geometry & Clumping) ---
-  const geoSection = addSection('Coat Materials');
-
-  const engineModeRow = document.createElement('div');
-  engineModeRow.className = 'dpr-selector-row engine-mode-row';
-
-  const gpuFurModeBtn = document.createElement('button');
-  gpuFurModeBtn.type = 'button';
-  gpuFurModeBtn.className = 'dpr-pill-btn engine-mode-btn';
-  gpuFurModeBtn.textContent = 'WebGPU (Default)';
-  gpuFurModeBtn.setAttribute('aria-label', 'Switch to default 60k WebGPU Fur and GPGPU physics');
-
-  const webglModeBtn = document.createElement('button');
-  webglModeBtn.type = 'button';
-  webglModeBtn.className = 'dpr-pill-btn engine-mode-btn';
-  webglModeBtn.textContent = 'WebGL';
-  webglModeBtn.setAttribute('aria-label', 'Switch to lightweight WebGL Fur fallback mode');
-
-  engineModeRow.appendChild(gpuFurModeBtn);
-  engineModeRow.appendChild(webglModeBtn);
-  geoSection.appendChild(engineModeRow);
-
-  addSlider(
-    geoSection,
-    'furLength',
-    'Fur Length',
-    0.06,
-    0.62,
-    0.01,
-    (v) => `${(v * 2.0).toFixed(2)}" (${Math.round(v * 50.8)} mm)`
-  );
-  addSlider(
-    geoSection,
-    'furDensity',
-    'Fur Density',
-    0.12,
-    1.0,
-    0.01,
-    (v) =>
-      state.gpuFurEnabled
-        ? `${Math.round(v * 100)}% (${Math.round(v * 60)}k)`
-        : `${Math.round(v * 100)}% (WebGL)`
-  );
-  addSlider(
-    geoSection,
-    'curliness',
-    'Curl / Waviness',
-    0.0,
-    1.0,
-    0.01,
-    (v) => `${Math.round(v * 100)}%`
-  );
-  addSlider(
-    geoSection,
-    'clumping',
-    'Tuft Clumping',
-    0.0,
-    1.0,
-    0.01,
-    (v) => `${Math.round(v * 100)}%`
-  );
-
-  // --- Section 3: Physical Hair Shading ---
-  const shadingSection = addSection('Physical Hair Shading');
-
-  const colorGrid = document.createElement('div');
-  colorGrid.className = 'color-grid';
-
-  function addColorPicker(key, labelText) {
-    const cell = document.createElement('label');
-    cell.className = 'color-cell';
-
-    const span = document.createElement('span');
-    span.textContent = labelText;
-
-    const picker = document.createElement('input');
-    picker.type = 'color';
-    picker.value = sanitizeHexColor(state[key], '#ff9ec7');
-    picker.setAttribute('aria-label', labelText);
-
-    picker.addEventListener('input', () => {
-      const safeColor = sanitizeHexColor(picker.value, state[key]);
-      state[key] = safeColor;
-      onChange(key, safeColor);
-    });
-
-    cell.appendChild(span);
-    cell.appendChild(picker);
-    colorGrid.appendChild(cell);
-    colorRefs[key] = picker;
-  }
-
-  addColorPicker('baseColor', 'Root Color');
-  addColorPicker('tipColor', 'Tip Color');
-  shadingSection.appendChild(colorGrid);
-
-  addSlider(
-    shadingSection,
-    'roughness',
-    'Roughness',
-    0.06,
-    0.95,
-    0.01,
-    (v) => v.toFixed(2)
-  );
-  addSlider(
-    shadingSection,
-    'specular',
-    'Specular',
-    0.0,
-    2.0,
-    0.02,
-    (v) => v.toFixed(2)
-  );
-
-  // --- Section 4: Studio Lighting & Wind ---
-  const lightSection = addSection('Lighting & Wind');
-
-  const keyColorCell = document.createElement('label');
-  keyColorCell.className = 'color-cell';
-  keyColorCell.style.marginBottom = '9px';
-
-  const keyColorSpan = document.createElement('span');
-  keyColorSpan.textContent = 'Key Light Color';
-
-  const keyColorPicker = document.createElement('input');
-  keyColorPicker.type = 'color';
-  keyColorPicker.value = sanitizeHexColor(state.keyColor, '#fff7ed');
-  keyColorPicker.setAttribute('aria-label', 'Key Light Color');
-
-  keyColorPicker.addEventListener('input', () => {
-    const safeColor = sanitizeHexColor(keyColorPicker.value, state.keyColor || '#fff7ed');
-    state.keyColor = safeColor;
-    onChange('keyColor', safeColor);
+  engineModeBtn.addEventListener('click', () => {
+    const next = !state.gpuFurEnabled;
+    state.gpuFurEnabled = next;
+    engineModeBtn.classList.toggle('active', next);
+    engineModeBtn.textContent = next ? '✨ 64-Shell WebGPU Fur' : '⚡ Analytical WebGL';
+    updateGPUFurModeUI(next);
+    onChange('toggleGPUFur', next);
   });
 
-  keyColorCell.appendChild(keyColorSpan);
-  keyColorCell.appendChild(keyColorPicker);
-  lightSection.appendChild(keyColorCell);
-  colorRefs.keyColor = keyColorPicker;
+  engineRow.appendChild(engineLabel);
+  engineRow.appendChild(engineModeBtn);
+  atmospherePanel.appendChild(engineRow);
 
-  addSlider(
-    lightSection,
-    'lightAngle',
-    'Key Light Angle',
-    -180,
-    180,
-    1,
-    (v) => `${Math.round(v)}°`
-  );
-  addSlider(
-    lightSection,
-    'lightIntensity',
-    'Key Intensity',
-    0.2,
-    2.5,
-    0.05,
-    (v) => v.toFixed(2)
-  );
-  addSlider(
-    lightSection,
-    'rimIntensity',
-    'Rim Scatter',
-    0.0,
-    2.5,
-    0.05,
-    (v) => v.toFixed(2)
-  );
-  addSlider(
-    lightSection,
-    'windStrength',
-    'Wind Breeze',
-    0.0,
-    2.5,
-    0.05,
-    (v) => v.toFixed(2)
-  );
+  // 60 FPS Record Mode Toggle Row
+  const perfRow = document.createElement('div');
+  perfRow.className = 'dock-subhead-row';
+  perfRow.style.marginTop = '6px';
 
-  // --- Section 5: Recording & Performance (Hidden per user preference; Retina enabled by default) ---
-  const perfSection = addSection('Recording & Performance');
-  perfSection.style.display = 'none';
-  perfSection.setAttribute('aria-hidden', 'true');
+  const perfLabel = document.createElement('span');
+  perfLabel.className = 'dock-subhead';
+  perfLabel.textContent = 'Frame Lock';
 
   let recordModeActive = false;
   const recordBtn = document.createElement('button');
   recordBtn.type = 'button';
-  recordBtn.className = 'action-btn perf-toggle-btn';
-  recordBtn.textContent = '⏺ Record Mode (60 FPS): OFF';
-  recordBtn.setAttribute('aria-label', 'Toggle 60 FPS recording optimization');
-
-  recordBtn.addEventListener('click', () => {
+  recordBtn.className = 'dock-toggle-pill-btn';
+  recordBtn.textContent = '⏺ 60 FPS Lock: OFF';
+  recordBtn.onclick = () => {
     recordModeActive = !recordModeActive;
-    recordBtn.textContent = recordModeActive ? '⏺ Record Mode: 60 FPS ON' : '⏺ Record Mode (60 FPS): OFF';
+    recordBtn.textContent = recordModeActive ? '⏺ 60 FPS Lock: ON' : '⏺ 60 FPS Lock: OFF';
     recordBtn.classList.toggle('active', recordModeActive);
     onChange('toggleRecordMode', recordModeActive);
-  });
-  perfSection.appendChild(recordBtn);
+  };
+  perfRow.appendChild(perfLabel);
+  perfRow.appendChild(recordBtn);
+  atmospherePanel.appendChild(perfRow);
 
-  const dprRow = document.createElement('div');
-  dprRow.className = 'dpr-selector-row';
-
-  const dprOptions = [
-    { label: '1x (Fast/Record)', val: '1x' },
-    { label: '1.5x', val: '1.5x' },
-    { label: '2x (Retina)', val: '2x' }
-  ];
-  const dprButtons = {};
-
-  dprOptions.forEach((opt) => {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'dpr-pill-btn';
-    btn.textContent = opt.label;
-    if (opt.val === '2x') btn.classList.add('active');
-    btn.addEventListener('click', () => {
-      Object.values(dprButtons).forEach((b) => b.classList.remove('active'));
-      btn.classList.add('active');
-      onChange('setDPR', opt.val);
-    });
-    dprButtons[opt.val] = btn;
-    dprRow.appendChild(btn);
-  });
-  perfSection.appendChild(dprRow);
-
-  let autoGuardActive = true;
-  const autoGuardBtn = document.createElement('button');
-  autoGuardBtn.type = 'button';
-  autoGuardBtn.className = 'action-btn active';
-  autoGuardBtn.textContent = '🛡 Auto-Protect 60 FPS: ON';
-  autoGuardBtn.addEventListener('click', () => {
-    autoGuardActive = !autoGuardActive;
-    autoGuardBtn.textContent = autoGuardActive ? '🛡 Auto-Protect 60 FPS: ON' : '🛡 Auto-Protect 60 FPS: OFF';
-    autoGuardBtn.classList.toggle('active', autoGuardActive);
-    onChange('toggleAutoFPSGuard', autoGuardActive);
-  });
-  perfSection.appendChild(autoGuardBtn);
-
-  // --- Section 6: AR Camera Controls (Active only in AR Mode) ---
-  const arSection = addSection('AR Camera Controls');
-  arSection.className = 'ui-section ar-section';
+  // AR Section (Visible in AR Mode)
+  const arSection = document.createElement('div');
+  arSection.className = 'dock-ar-section';
   arSection.style.display = (state.environment === 'ar') ? 'block' : 'none';
 
-  const arControlsWrap = document.createElement('div');
-  arControlsWrap.className = 'ar-controls-wrap';
+  const arTitle = document.createElement('div');
+  arTitle.className = 'dock-subhead';
+  arTitle.textContent = 'AR Camera & World Tracking';
+  arSection.appendChild(arTitle);
 
-  const arStatusRow = document.createElement('div');
-  arStatusRow.className = 'ar-status-row';
+  const arStatusCard = document.createElement('div');
+  arStatusCard.className = 'dock-status-card';
 
   const arStatusDot = document.createElement('span');
-  arStatusDot.className = 'ar-status-dot';
+  arStatusDot.className = 'dock-status-dot';
 
   const arStatusText = document.createElement('span');
-  arStatusText.className = 'ar-status-text';
-  arStatusText.textContent = 'Ready for AR Camera';
-
-  arStatusRow.appendChild(arStatusDot);
-  arStatusRow.appendChild(arStatusText);
-  arControlsWrap.appendChild(arStatusRow);
-
-  const arPlaneRow = document.createElement('div');
-  arPlaneRow.className = 'ar-plane-row';
-
-  const arPlaneInfo = document.createElement('div');
-  arPlaneInfo.className = 'ar-plane-info';
-
-  const arPlaneDot = document.createElement('span');
-  arPlaneDot.className = 'ar-plane-dot';
-
-  const arPlaneText = document.createElement('span');
-  arPlaneText.className = 'ar-plane-text';
-  arPlaneText.textContent = 'Estimating plane from video...';
-
-  arPlaneInfo.appendChild(arPlaneDot);
-  arPlaneInfo.appendChild(arPlaneText);
+  arStatusText.className = 'dock-status-text';
+  arStatusText.textContent = 'AR Camera Ready';
 
   const arPlaneBadge = document.createElement('span');
-  arPlaneBadge.className = 'ar-plane-badge';
+  arPlaneBadge.className = 'dock-status-badge';
   arPlaneBadge.textContent = '0 pts';
 
-  arPlaneRow.appendChild(arPlaneInfo);
-  arPlaneRow.appendChild(arPlaneBadge);
-  arControlsWrap.appendChild(arPlaneRow);
+  arStatusCard.appendChild(arStatusDot);
+  arStatusCard.appendChild(arStatusText);
+  arStatusCard.appendChild(arPlaneBadge);
+  arSection.appendChild(arStatusCard);
 
-  const arLightRow = document.createElement('div');
-  arLightRow.className = 'ar-plane-row';
+  const arActionsGrid = document.createElement('div');
+  arActionsGrid.className = 'dock-grid-2col';
 
-  const arLightInfo = document.createElement('div');
-  arLightInfo.className = 'ar-plane-info';
+  const mirrorBtn = document.createElement('button');
+  mirrorBtn.type = 'button';
+  mirrorBtn.className = 'dock-action-btn';
+  mirrorBtn.textContent = 'Mirror: OFF';
+  mirrorBtn.onclick = () => onChange('arToggleMirror', true);
 
-  const arLightDot = document.createElement('span');
-  arLightDot.className = 'ar-plane-dot';
-  arLightDot.style.background = '#fffdf7';
-  arLightDot.style.boxShadow = '0 0 6px rgba(253, 224, 71, 0.8)';
-
-  const arLightText = document.createElement('span');
-  arLightText.className = 'ar-plane-text';
-  arLightText.textContent = 'Light Est: 5200K · 100% · -32°';
-
-  arLightInfo.appendChild(arLightDot);
-  arLightInfo.appendChild(arLightText);
-
-  const arLightBadge = document.createElement('span');
-  arLightBadge.className = 'ar-plane-badge';
-  arLightBadge.textContent = '#fffdf7';
-
-  arLightRow.appendChild(arLightInfo);
-  arLightRow.appendChild(arLightBadge);
-  arControlsWrap.appendChild(arLightRow);
-
-  const arActionRow = document.createElement('div');
-  arActionRow.className = 'action-row';
+  const flipCamBtn = document.createElement('button');
+  flipCamBtn.type = 'button';
+  flipCamBtn.className = 'dock-action-btn';
+  flipCamBtn.textContent = '🔄 Flip Camera';
+  flipCamBtn.onclick = () => onChange('arFlipCamera', true);
 
   let tapPlaceActive = true;
   const tapPlaceBtn = document.createElement('button');
   tapPlaceBtn.type = 'button';
-  tapPlaceBtn.className = 'action-btn active';
+  tapPlaceBtn.className = 'dock-action-btn active';
   tapPlaceBtn.textContent = 'Tap to Place: ON';
-  tapPlaceBtn.addEventListener('click', () => {
+  tapPlaceBtn.onclick = () => {
     tapPlaceActive = !tapPlaceActive;
     tapPlaceBtn.textContent = tapPlaceActive ? 'Tap to Place: ON' : 'Tap to Place: OFF';
     tapPlaceBtn.classList.toggle('active', tapPlaceActive);
     onChange('arToggleTapPlace', tapPlaceActive);
-  });
+  };
 
   let lightEstActive = true;
   const lightEstBtn = document.createElement('button');
   lightEstBtn.type = 'button';
-  lightEstBtn.className = 'action-btn active';
+  lightEstBtn.className = 'dock-action-btn active';
   lightEstBtn.textContent = 'Light Est: ON';
-  lightEstBtn.addEventListener('click', () => {
+  lightEstBtn.onclick = () => {
     lightEstActive = !lightEstActive;
     lightEstBtn.textContent = lightEstActive ? 'Light Est: ON' : 'Light Est: OFF';
     lightEstBtn.classList.toggle('active', lightEstActive);
     onChange('arToggleLightEst', lightEstActive);
-  });
+  };
 
   const resetPosBtn = document.createElement('button');
   resetPosBtn.type = 'button';
-  resetPosBtn.className = 'action-btn';
-  resetPosBtn.textContent = 'Reset';
-  resetPosBtn.addEventListener('click', () => {
-    onChange('arResetPosition', true);
+  resetPosBtn.className = 'dock-action-btn';
+  resetPosBtn.textContent = '📍 Reset Position';
+  resetPosBtn.onclick = () => onChange('arResetPosition', true);
+
+  arActionsGrid.appendChild(mirrorBtn);
+  arActionsGrid.appendChild(flipCamBtn);
+  arActionsGrid.appendChild(tapPlaceBtn);
+  arActionsGrid.appendChild(lightEstBtn);
+  arActionsGrid.appendChild(resetPosBtn);
+  arSection.appendChild(arActionsGrid);
+  atmospherePanel.appendChild(arSection);
+
+  // =========================================================================
+  // TAB 3: ✨ PLAY & CARE (NAME, LOVE METER, JOY BACKFLIP, SOUND)
+  // =========================================================================
+  const carePanel = tabPanels['care'];
+
+  // 1. Creature Name Input with instant persistence
+  const careNameWrap = document.createElement('div');
+  careNameWrap.className = 'dock-name-edit-wrap';
+
+  const careNameLabel = document.createElement('div');
+  careNameLabel.className = 'dock-subhead';
+  careNameLabel.textContent = "Your Creature's Name";
+
+  const careNameInput = document.createElement('input');
+  careNameInput.type = 'text';
+  careNameInput.maxLength = 24;
+  careNameInput.value = creatureName;
+  careNameInput.className = 'dock-name-input';
+  careNameInput.placeholder = 'Give your Mochi a name...';
+
+  careNameInput.addEventListener('input', (e) => {
+    const newName = e.target.value.trim() || 'Mochi-Puff';
+    creatureName = newName;
+    pillName.textContent = newName;
+    dockNameDisplay.textContent = newName;
+    updatePolaroidLabel(newName);
+    saveCreatureProfile({ name: newName });
+    onChange('creatureName', newName);
   });
 
-  arActionRow.appendChild(tapPlaceBtn);
-  arActionRow.appendChild(lightEstBtn);
-  arActionRow.appendChild(resetPosBtn);
-  arControlsWrap.appendChild(arActionRow);
+  careNameWrap.appendChild(careNameLabel);
+  careNameWrap.appendChild(careNameInput);
+  carePanel.appendChild(careNameWrap);
 
-  const arBtnRow = document.createElement('div');
-  arBtnRow.className = 'action-row';
+  // 2. Love & Affection Meter
+  const loveTitle = document.createElement('div');
+  loveTitle.className = 'dock-subhead';
+  loveTitle.textContent = 'Affection & Bond Level';
+  carePanel.appendChild(loveTitle);
 
-  const mirrorBtn = document.createElement('button');
-  mirrorBtn.type = 'button';
-  mirrorBtn.className = 'action-btn';
-  mirrorBtn.textContent = 'Mirror: ON';
-  mirrorBtn.addEventListener('click', () => {
-    onChange('arToggleMirror', true);
-  });
+  const loveCard = document.createElement('div');
+  loveCard.className = 'dock-love-card';
+
+  const loveHeader = document.createElement('div');
+  loveHeader.className = 'dock-love-header';
+
+  const loveLevelTitle = document.createElement('span');
+  loveLevelTitle.className = 'dock-love-level';
+  loveLevelTitle.textContent = 'Level 1: New Friend';
+
+  const loveHeartsCount = document.createElement('span');
+  loveHeartsCount.className = 'dock-love-hearts';
+  loveHeartsCount.textContent = '💖 0 Hearts';
+
+  loveHeader.appendChild(loveLevelTitle);
+  loveHeader.appendChild(loveHeartsCount);
+
+  const loveTrack = document.createElement('div');
+  loveTrack.className = 'dock-love-track';
+
+  const loveFill = document.createElement('div');
+  loveFill.className = 'dock-love-fill';
+  loveFill.style.width = '15%';
+
+  loveTrack.appendChild(loveFill);
+
+  const loveSubRow = document.createElement('div');
+  loveSubRow.className = 'dock-love-subrow';
+
+  const loveStreakBadge = document.createElement('span');
+  loveStreakBadge.className = 'dock-streak-badge';
+  loveStreakBadge.textContent = '🔥 Day 1 Streak';
+
+  const loveHint = document.createElement('span');
+  loveHint.className = 'dock-love-hint';
+  loveHint.textContent = 'Pet Mochi or boop to share love and level up!';
+
+  loveSubRow.appendChild(loveStreakBadge);
+  loveSubRow.appendChild(loveHint);
+
+  loveCard.appendChild(loveHeader);
+  loveCard.appendChild(loveTrack);
+  loveCard.appendChild(loveSubRow);
+  carePanel.appendChild(loveCard);
+
+  // 3. Acrobatics & Joy Flip Trigger
+  const acrobaticsTitle = document.createElement('div');
+  acrobaticsTitle.className = 'dock-subhead';
+  acrobaticsTitle.textContent = 'Tricks & Acrobatics';
+  carePanel.appendChild(acrobaticsTitle);
 
   const flipBtn = document.createElement('button');
   flipBtn.type = 'button';
-  flipBtn.className = 'action-btn';
-  flipBtn.textContent = 'Flip / Retry Cam';
+  flipBtn.className = 'dock-hero-btn';
+  flipBtn.innerHTML = '<span>🤸</span><span>Do a Joyful Backflip!</span>';
+
   flipBtn.addEventListener('click', () => {
-    onChange('arFlipCamera', true);
+    flipBtn.classList.add('bouncing');
+    setTimeout(() => flipBtn.classList.remove('bouncing'), 650);
+    onChange('doJoyFlip', true);
+  });
+  carePanel.appendChild(flipBtn);
+
+  // 4. Audio Sound FX Toggle Row
+  const audioRow = document.createElement('div');
+  audioRow.className = 'dock-subhead-row';
+  audioRow.style.marginTop = '14px';
+
+  const audioTitle = document.createElement('span');
+  audioTitle.className = 'dock-subhead';
+  audioTitle.textContent = 'Procedural Sound';
+
+  let careSoundToggleBtn = document.createElement('button');
+  careSoundToggleBtn.type = 'button';
+  careSoundToggleBtn.className = 'dock-toggle-pill-btn';
+  careSoundToggleBtn.textContent = isAudioMuted() ? '🔇 Sound: Muted' : '🔊 Sound: Active';
+  careSoundToggleBtn.classList.toggle('active', !isAudioMuted());
+
+  careSoundToggleBtn.addEventListener('click', () => {
+    const muted = toggleAudioMute();
+    careSoundToggleBtn.textContent = muted ? '🔇 Sound: Muted' : '🔊 Sound: Active';
+    careSoundToggleBtn.classList.toggle('active', !muted);
+    soundBtn.textContent = muted ? '🔇' : '🔊';
   });
 
-  arBtnRow.appendChild(mirrorBtn);
-  arBtnRow.appendChild(flipBtn);
-  arControlsWrap.appendChild(arBtnRow);
-  arSection.appendChild(arControlsWrap);
+  audioRow.appendChild(audioTitle);
+  audioRow.appendChild(careSoundToggleBtn);
+  carePanel.appendChild(audioRow);
 
-  function updateGPUFurModeUI(isGpuFur) {
-    const enabled = Boolean(isGpuFur);
-    state.gpuFurEnabled = enabled;
+  // 5. Secret Playground Link (Grass Painter)
+  const grassLinkRow = document.createElement('div');
+  grassLinkRow.className = 'dock-grass-link-wrap';
+  grassLinkRow.innerHTML = `
+    <a href="./grass.html" class="dock-grass-link">
+      <span>🌱 GPU Grass Painter Playground</span>
+      <span>↗</span>
+    </a>
+  `;
+  carePanel.appendChild(grassLinkRow);
 
+  // =========================================================================
+  // TAB 4: 📸 SNAPSHOT (PHOTO BOOTH & POLAROID CARD)
+  // =========================================================================
+  const photoPanel = tabPanels['snapshot'];
+
+  const photoCard = document.createElement('div');
+  photoCard.className = 'dock-photo-booth-card';
+
+  photoCard.innerHTML = `
+    <div class="photo-booth-preview">
+      <div class="photo-polaroid-frame">
+        <div class="photo-inner-screen">
+          <span class="photo-lens-icon">📷</span>
+        </div>
+        <div class="photo-polaroid-label">✦ ${creatureName} ✦</div>
+      </div>
+    </div>
+    <div class="photo-booth-desc">
+      Capture a vintage polaroid card of your unique creature, complete with signature watermark, and auto-download high-res PNG.
+    </div>
+  `;
+
+  const photoPolaroidLabel = photoCard.querySelector('.photo-polaroid-label');
+
+  function updatePolaroidLabel(name) {
+    if (photoPolaroidLabel) {
+      photoPolaroidLabel.textContent = `✦ ${name} ✦`;
+    }
+  }
+
+  const snapBtn = document.createElement('button');
+  snapBtn.type = 'button';
+  snapBtn.className = 'dock-hero-btn snap-btn';
+  snapBtn.innerHTML = '<span>📸</span><span>Capture Polaroid Photo</span>';
+
+  snapBtn.addEventListener('click', () => {
+    snapBtn.disabled = true;
+    snapBtn.classList.add('bouncing');
+    onChange('takeSnapshot', creatureName);
+    setTimeout(() => {
+      snapBtn.disabled = false;
+      snapBtn.classList.remove('bouncing');
+    }, 1200);
+  });
+
+  photoCard.appendChild(snapBtn);
+  photoPanel.appendChild(photoCard);
+
+  // =========================================================================
+  // HELPERS & SYNC METHODS
+  // =========================================================================
+  function updateGPUFurModeUI(enabled) {
     topGpuFurPill.classList.toggle('active', enabled);
     topGpuFurPill.setAttribute('aria-pressed', String(enabled));
-    topGpuLabel.textContent = enabled ? 'WebGPU Fur: ON' : 'WebGL Mode: ON';
-
-    webglModeBtn.classList.toggle('active', !enabled);
-    webglModeBtn.setAttribute('aria-pressed', String(!enabled));
-    gpuFurModeBtn.classList.toggle('active', enabled);
-    gpuFurModeBtn.setAttribute('aria-pressed', String(enabled));
-
-    if (sliderRefs.furDensity) {
-      sliderRefs.furDensity.valSpan.textContent = sliderRefs.furDensity.formatFn(state.furDensity);
-    }
+    engineModeBtn.classList.toggle('active', enabled);
+    engineModeBtn.textContent = enabled ? '✨ 64-Shell WebGPU Fur' : '⚡ Analytical WebGL';
   }
 
   topGpuFurPill.addEventListener('click', () => {
     const next = !state.gpuFurEnabled;
     updateGPUFurModeUI(next);
     onChange('toggleGPUFur', next);
-  });
-
-  webglModeBtn.addEventListener('click', () => {
-    if (state.gpuFurEnabled) {
-      updateGPUFurModeUI(false);
-      onChange('toggleGPUFur', false);
-    }
-  });
-
-  gpuFurModeBtn.addEventListener('click', () => {
-    if (!state.gpuFurEnabled) {
-      updateGPUFurModeUI(true);
-      onChange('toggleGPUFur', true);
-    }
   });
 
   updateGPUFurModeUI(Boolean(state.gpuFurEnabled));
@@ -887,10 +1002,9 @@ export function createMinimalUI(container, state, onChange) {
       sceneButtons[id].classList.toggle('active', isSel);
       sceneButtons[id].setAttribute('aria-selected', String(isSel));
     });
-    Object.keys(mobileSceneButtons).forEach((id) => {
+    Object.keys(atmosphereEnvButtons).forEach((id) => {
       const isSel = id === safeId;
-      mobileSceneButtons[id].classList.toggle('active', isSel);
-      mobileSceneButtons[id].setAttribute('aria-selected', String(isSel));
+      atmosphereEnvButtons[id].classList.toggle('active', isSel);
     });
     const matchedPreset = ENVIRONMENT_PRESETS.find((e) => e.id === safeId);
     if (matchedPreset && mobileBtnScene) {
@@ -901,17 +1015,29 @@ export function createMinimalUI(container, state, onChange) {
     }
   }
 
-  return {
-    syncUI() {
-      Object.keys(sliderRefs).forEach((k) => {
+  function syncAllUI() {
+    updatePresetCardsUI();
+    Object.keys(sliderRefs).forEach((k) => {
+      if (sliderRefs[k] && state[k] !== undefined) {
         sliderRefs[k].input.value = String(state[k]);
         sliderRefs[k].valSpan.textContent = sliderRefs[k].formatFn(state[k]);
-      });
-      Object.keys(colorRefs).forEach((k) => {
+      }
+    });
+    Object.keys(colorRefs).forEach((k) => {
+      if (colorRefs[k] && state[k]) {
         colorRefs[k].value = state[k];
-      });
-      updateEnvSelectionUI(state.environment || 'studio');
-      updateGPUFurModeUI(Boolean(state.gpuFurEnabled));
+        if (colorRefs[k].previousElementSibling) {
+          colorRefs[k].previousElementSibling.previousElementSibling.style.background = state[k];
+        }
+      }
+    });
+    updateEnvSelectionUI(state.environment || 'studio');
+    updateGPUFurModeUI(Boolean(state.gpuFurEnabled));
+  }
+
+  return {
+    syncUI() {
+      syncAllUI();
     },
     setGPUFurEnabled(enabled) {
       updateGPUFurModeUI(Boolean(enabled));
@@ -927,26 +1053,11 @@ export function createMinimalUI(container, state, onChange) {
     },
     setARPlaneStatus(surfaceType, planeY, confidence, featureCount) {
       const confPct = Math.round((confidence || 0.9) * 100);
-      arPlaneText.textContent = `${surfaceType} (${confPct}% conf)`;
+      arStatusText.textContent = `${surfaceType} (${confPct}% conf)`;
       arPlaneBadge.textContent = `${featureCount || 0} pts`;
     },
     setARLightStatus(lightInfo) {
       if (!lightInfo) return;
-      const safeHex = sanitizeHexColor(lightInfo.keyColor, '#fffdf7');
-      if (lightInfo.isManualReset) {
-        arLightDot.style.background = '#94a3b8';
-        arLightDot.style.boxShadow = 'none';
-        arLightText.textContent = 'Light Est: OFF (Manual Studio Light)';
-        arLightBadge.textContent = 'MANUAL';
-      } else {
-        arLightDot.style.background = safeHex;
-        arLightDot.style.boxShadow = `0 0 8px ${safeHex}`;
-        arLightText.textContent = `Webcam Light: ${lightInfo.kelvin || 5200}K · ${lightInfo.luminancePct || 100}% · ${Math.round(lightInfo.lightAngle || 0)}°`;
-        arLightBadge.textContent = safeHex;
-      }
-      if (colorRefs.keyColor) {
-        colorRefs.keyColor.value = safeHex;
-      }
       ['lightAngle', 'lightIntensity', 'rimIntensity'].forEach((k) => {
         if (sliderRefs[k] && state[k] !== undefined) {
           sliderRefs[k].input.value = String(state[k]);
@@ -961,16 +1072,10 @@ export function createMinimalUI(container, state, onChange) {
     },
     setSurfaceTrackedStatus(isLocked, confidence) {
       if (isLocked) {
-        arPlaneDot.style.background = '#4ade80';
-        arPlaneDot.style.boxShadow = '0 0 6px rgba(74, 222, 128, 0.8)';
+        arStatusDot.style.background = '#4ade80';
         arPlaneBadge.textContent = `${confidence}% lock`;
-        arPlaneBadge.style.color = '#86efac';
-        arPlaneBadge.style.borderColor = '#4ade80';
       } else {
-        arPlaneDot.style.background = '#38bdf8';
-        arPlaneDot.style.boxShadow = '0 0 6px rgba(56, 189, 248, 0.7)';
-        arPlaneBadge.style.color = '#7dd3fc';
-        arPlaneBadge.style.borderColor = 'rgba(56, 189, 248, 0.35)';
+        arStatusDot.style.background = '#38bdf8';
       }
     },
     setTapPlaceActive(isActive) {
@@ -980,6 +1085,26 @@ export function createMinimalUI(container, state, onChange) {
     },
     setMirrorLabel(isMirrored) {
       mirrorBtn.textContent = isMirrored ? 'Mirror: ON' : 'Mirror: OFF';
+    },
+    updateAffection(level, currentLove, maxLove, levelTitle, totalHearts, streakDays = 1) {
+      const pct = Math.min(100, Math.max(0, (currentLove / Math.max(1, maxLove)) * 100));
+      loveLevelTitle.textContent = `Level ${level}: ${levelTitle}`;
+      loveHeartsCount.textContent = `💖 ${totalHearts} Hearts`;
+      loveFill.style.width = `${pct}%`;
+      pillBadge.textContent = `💖 Lv.${level} (${Math.round(pct)}%)`;
+      if (loveStreakBadge) {
+        loveStreakBadge.textContent = `🔥 Day ${streakDays} Streak`;
+      }
+    },
+    getCreatureName() {
+      return creatureName;
+    },
+    setCreatureName(name) {
+      creatureName = name;
+      careNameInput.value = name;
+      pillName.textContent = name;
+      dockNameDisplay.textContent = name;
+      updatePolaroidLabel(name);
     }
   };
 }
