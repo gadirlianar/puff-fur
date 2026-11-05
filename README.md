@@ -8,9 +8,9 @@
 [![Vite](https://img.shields.io/badge/Vite-Bundler-646CFF?logo=vite)](https://vitejs.dev/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-An interactive, high-performance **3D WebGL2 / GPGPU Fur Physics** and **Marschner Physical Hair Shading** simulation engineered for modern browsers. Showcases procedural soft-body anatomy, dual-pipeline fur rendering, GPU-driven spring physics, interactive petting/grooming, and a live WebRTC AR camera mode.
+An interactive, high-performance **3D WebGL2 / GPGPU Fur Physics** and **Marschner Physical Hair Shading** simulation engineered for modern web browsers. Features procedural soft-body creature anatomy, hybrid dual-pipeline fur rendering, GPU-driven spring dynamics, interactive grooming/booping, and an augmented reality (AR) camera view with real-time lighting estimation.
 
-[**Live Demo**](https://3d-gpu-fur-simulation-nine.vercel.app/) · [**Report Issue**](https://github.com/gadirlianar/puff-fur/issues)
+[**Live Demo**](https://puff-fur.vercel.app/) · [**Report Issue**](https://github.com/gadirlianar/puff-fur/issues)
 
 </div>
 
@@ -19,7 +19,7 @@ An interactive, high-performance **3D WebGL2 / GPGPU Fur Physics** and **Marschn
 ## 🌟 Highlights & Technical Overview
 
 ### 1. 🧵 Hybrid Dual-Pipeline Fur Rendering
-- **64 Volumetric Shell Layers:** Mesh normal extrusion using hardware instancing for dense, soft, and velvety under-fur volume.
+- **64 Volumetric Shell Layers:** Mesh normal extrusion using hardware instancing for dense, soft, and velvety under-fur volume (32 shells in fallback mode).
 - **60,000 Instanced 3D Hair Strands:** 20-segment hair ribbons dynamically oriented toward the camera (cylindrical billboarding) with procedural root-to-tip tapering.
 - **Procedural Clumping & Grooming:** 420 surface clump centroids generating realistic tufts, combined with a continuous head-to-body grooming vector flow.
 
@@ -29,8 +29,8 @@ An interactive, high-performance **3D WebGL2 / GPGPU Fur Physics** and **Marschn
 - **Beer-Lambert Self-Shadowing:** Volumetric light attenuation through dense fur coats with follicle ambient occlusion (AO).
 
 ### 3. ⚡ GPGPU Ping-Pong Verlet Physics
-- **128×128 (16,384 patches) Parallel GPU Simulation:** Real-time spring-damper physics computed via `GPUComputationRenderer`.
-- **Wind Turbulence & Inertia:** 3D curl-noise wind gusts paired with linear and rotational body inertia follow-through.
+- **128×128 (16,384 patches) Parallel GPU Simulation:** Real-time spring-damper physics computed via ping-pong render targets (`GPUComputationRenderer`).
+- **Wind Turbulence & Inertia:** 3D pseudo-curl wind gusts paired with linear and rotational body inertia follow-through.
 - **Interactive Force Fields:** Cursor raycasting generates local grooming/parting impulses and elastic "boop" radial shockwave ripples.
 - **Graceful WebGL Fallback:** Automatic switch to analytical spring dynamics on devices with limited floating-point texture support.
 
@@ -39,11 +39,14 @@ An interactive, high-performance **3D WebGL2 / GPGPU Fur Physics** and **Marschn
 - Multi-layered physical cornea/iris with smooth saccadic eye tracking toward the user's cursor.
 - Rhythmic breathing animations and elastic squash-and-stretch bounce dynamics.
 
-### 5. 📷 Multi-Environment & WebRTC AR
-- **Studio:** High-contrast 3-point lighting setup with soft PCF shadows and an infinite backdrop.
+### 5. 📷 Multi-Environment & Live AR Camera
+- **Studio:** High-contrast 3-point lighting setup with soft PCF shadows and an infinite dark cyclorama.
 - **Cloud Sky:** 360° blue sky with procedural volumetric cloud sea.
 - **Cozy Desk:** Tilt-shift miniature scale setup with warm dusk interior lighting.
-- **AR View:** Real-time webcam video feed with surface plane detection and dynamic ambient light temperature estimation.
+- **AR View:** Live camera stream (`MediaDevices.getUserMedia`) with surface plane detection, hit-testing, and dynamic ambient color temperature estimation.
+
+### 6. 🌾 Bonus: GPU Grass Painter (`grass.html`)
+- An interactive 100,000-blade GPU instanced grass field with real-time deformable terrain brushing and wind simulation.
 
 ---
 
@@ -52,11 +55,12 @@ An interactive, high-performance **3D WebGL2 / GPGPU Fur Physics** and **Marschn
 | Action | Control | Description |
 | :--- | :--- | :--- |
 | **Pet & Comb** | `Left-click & Drag across body` | Parts fur and grooms strands along drag trajectory |
-| **Boop Creature** | `Click creature body` | Triggers a cute bounce and radial fur shockwave |
-| **Orbit Camera** | `Drag on background` | 360° camera orbit with damping |
+| **Boop Creature** | `Click creature body` | Triggers an elastic squash bounce and radial fur shockwave |
+| **Orbit Camera** | `Drag on background` | 360° camera orbit with smooth damping |
 | **Zoom** | `Mouse Wheel / Pinch` | Smooth zoom in and out |
 | **Fur Styling** | `Side Glassmorphic Panel` | Real-time control of length, density, clumping, curliness, roughness, specular, and base/tip colors |
 | **Presets** | `Top Presets Menu` | Instant switching between *Sakura Mochi*, *Golden Fluff*, *Midnight Velvet*, and *Matcha Puff* |
+| **AR Placement** | `Tap detected surface (AR Mode)` | Places Mochi-Puff at estimated depth and surface plane |
 
 ---
 
@@ -107,12 +111,22 @@ An interactive, high-performance **3D WebGL2 / GPGPU Fur Physics** and **Marschn
 ## 📦 Deployment
 
 ### Deploy with Vercel
-Deploying to Vercel requires zero extra configuration thanks to the included `vercel.json`:
+Deploying to Vercel requires zero configuration thanks to the included `vercel.json`:
 ```bash
 npx vercel --prod
 ```
+Official Live Demo: [https://puff-fur.vercel.app](https://puff-fur.vercel.app/)
 
-### Deploy with Docker / Node.js
+### Deploy with Docker
+```bash
+# Build Docker image
+docker build -t puff-fur .
+
+# Run container on port 3000
+docker run -p 3000:3000 puff-fur
+```
+
+### Run with Node.js Server
 ```bash
 npm run build
 npm start
