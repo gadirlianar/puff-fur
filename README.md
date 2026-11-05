@@ -10,7 +10,7 @@
 
 An interactive, high-performance **3D WebGL2 / GPGPU Fur Physics** and **Marschner Physical Hair Shading** simulation engineered for modern browsers. Showcases procedural soft-body anatomy, dual-pipeline fur rendering, GPU-driven spring physics, interactive petting/grooming, and a live WebRTC AR camera mode.
 
-[**Live Demo**](https://puff-fur.vercel.app/) · [**Report Issue**](https://github.com/gadirlianar/puff-fur/issues)
+[**Live Demo**](https://3d-gpu-fur-simulation-nine.vercel.app/) · [**Report Issue**](https://github.com/gadirlianar/puff-fur/issues)
 
 </div>
 
