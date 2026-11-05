@@ -1,0 +1,27 @@
+{
+  "name": "puff-fur",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Real-time interactive 3D WebGL2/GPGPU fur physics and Marschner hair shading simulation with Three.js",
+  "author": "Anar Gadirli",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gadirlianar/puff-fur.git"
+  },
+  "scripts": {
+    "dev": "vite --port=3000 --host=0.0.0.0",
+    "build": "vite build",
+    "preview": "vite preview --port=3000",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "^6.1.1",
+    "three": "^0.169.0",
+    "vite": "^8.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "typescript": "^7.0.2"
+  }
+}
